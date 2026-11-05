@@ -111,7 +111,7 @@ impl App {
     }
 
     fn apply(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
-        self.message = "Aplicando…".into();
+        self.message = "Applying…".into();
         terminal.draw(|f| draw(f, self))?;
 
         let decisions: Vec<(&Mismatch, Decision)> =
@@ -126,25 +126,25 @@ impl App {
                 self.cfg.mark_distinct(a, b);
             }
             match self.cfg.save(&self.root) {
-                Ok(()) => notes.push(format!("{} pares marcados como distintos", distinct.len())),
-                Err(e) => notes.push(format!("no se pudo guardar .musort.json: {e}")),
+                Ok(()) => notes.push(format!("{} pairs marked as distinct", distinct.len())),
+                Err(e) => notes.push(format!("couldn't save .musort.json: {e}")),
             }
         }
         if changes.len() > 0 {
             match exec::execute(&self.root, &changes) {
                 Ok(o) => {
-                    notes.push(format!("{} cambios aplicados", o.applied));
+                    notes.push(format!("{} changes applied", o.applied));
                     if let Some(first) = o.failed.first() {
-                        notes.push(format!("{} errores, el primero: {first}", o.failed.len()));
+                        notes.push(format!("{} errors, the first: {first}", o.failed.len()));
                     }
                     if o.run_dir.is_some() {
-                        notes.push("se revierte con `musort undo`".into());
+                        notes.push("revert with `musort undo`".into());
                     }
                 }
                 Err(e) => notes.push(e),
             }
         }
-        notes.push("corre `musort fix` para limpiar títulos".into());
+        notes.push("run `musort fix` to clean up titles".into());
         *self = App::load(&self.root, notes.join(" · "));
         Ok(())
     }
@@ -190,7 +190,7 @@ pub fn run(root: &Path) -> io::Result<()> {
                         if app.pending() == 0 {
                             return Ok(());
                         }
-                        app.message = format!("Hay {} decisiones sin aplicar. q otra vez para salir.", app.pending());
+                        app.message = format!("{} decisions not applied. Press q again to quit.", app.pending());
                         app.mode = Mode::Confirm('q');
                     }
                     (_, KeyCode::Tab) | (_, KeyCode::BackTab) => {
@@ -199,7 +199,7 @@ pub fn run(root: &Path) -> io::Result<()> {
                     (_, KeyCode::Down) | (_, KeyCode::Char('j')) => app.move_by(1),
                     (_, KeyCode::Up) | (_, KeyCode::Char('k')) => app.move_by(-1),
                     (_, KeyCode::Char('a')) if app.pending() > 0 => {
-                        app.message = format!("Aplicar {} decisiones? a otra vez para confirmar.", app.pending());
+                        app.message = format!("Apply {} decisions? Press a again to confirm.", app.pending());
                         app.mode = Mode::Confirm('a');
                     }
                     (_, KeyCode::Char('x')) => match app.tab {
@@ -232,7 +232,7 @@ fn mismatch_preview(app: &App, m: &Mismatch, d: &Decision) -> String {
     };
     let artists = resolve::reassigned_artists(&app.lib, t, &artist);
     format!(
-        "artistas {} · album_artist {} · carpeta {}",
+        "artists {} · album_artist {} · folder {}",
         artists.iter().map(|a| quoted(a)).collect::<Vec<_>>().join(" + "),
         quoted(&artist),
         quoted(&folder)
@@ -242,10 +242,10 @@ fn mismatch_preview(app: &App, m: &Mismatch, d: &Decision) -> String {
 fn merge_preview(app: &App, a: &Alias, m: &Merge) -> String {
     let count = |f: &str| resolve::tracks_in(&app.lib, f).len();
     match m {
-        Merge::IntoA => format!("{} canciones de {} pasan a {}", count(&a.b), quoted(&a.b), quoted(&a.a)),
-        Merge::IntoB => format!("{} canciones de {} pasan a {}", count(&a.a), quoted(&a.a), quoted(&a.b)),
-        Merge::Name(n) => format!("las dos carpetas pasan a {} (carpeta {})", quoted(n), quoted(&sanitize_filename(n))),
-        Merge::Distinct => "son artistas distintos; no se vuelve a preguntar".into(),
+        Merge::IntoA => format!("{} songs from {} move to {}", count(&a.b), quoted(&a.b), quoted(&a.a)),
+        Merge::IntoB => format!("{} songs from {} move to {}", count(&a.a), quoted(&a.a), quoted(&a.b)),
+        Merge::Name(n) => format!("both folders move to {} (folder {})", quoted(n), quoted(&sanitize_filename(n))),
+        Merge::Distinct => "different artists; won't ask again".into(),
     }
 }
 
@@ -275,8 +275,8 @@ fn draw(f: &mut Frame, app: &mut App) {
     let [list_area, detail_area] = Layout::horizontal([Constraint::Percentage(45), Constraint::Percentage(55)]).areas(body);
 
     let titles = vec![
-        format!(" Artista equivocado ({}) ", app.mismatches.len()),
-        format!(" Posibles alias ({}) ", app.aliases.len()),
+        format!(" Wrong artist ({}) ", app.mismatches.len()),
+        format!(" Possible aliases ({}) ", app.aliases.len()),
     ];
     let selected_tab = if app.tab == Tab::Review { 0 } else { 1 };
     f.render_widget(
@@ -296,7 +296,7 @@ fn draw(f: &mut Frame, app: &mut App) {
                     ListItem::new(Line::from(vec![Span::raw(mismatch_label(d)).green().bold(), Span::raw(name)]))
                 })
                 .collect();
-            let list = List::new(items).block(Block::bordered().title(" Canciones ")).highlight_style(highlight);
+            let list = List::new(items).block(Block::bordered().title(" Songs ")).highlight_style(highlight);
             f.render_stateful_widget(list, list_area, &mut app.review_state);
             render_review_detail(f, app, detail_area);
         }
@@ -312,19 +312,19 @@ fn draw(f: &mut Frame, app: &mut App) {
                     ]))
                 })
                 .collect();
-            let list = List::new(items).block(Block::bordered().title(" Carpetas ")).highlight_style(highlight);
+            let list = List::new(items).block(Block::bordered().title(" Folders ")).highlight_style(highlight);
             f.render_stateful_widget(list, list_area, &mut app.alias_state);
             render_alias_detail(f, app, detail_area);
         }
     }
 
     let help = match (&app.mode, app.tab) {
-        (Mode::Input(text), _) => format!("Nombre del artista: {text}▏   (Enter acepta, Esc cancela)"),
-        (_, Tab::Review) => "c usar carpeta · t usar tag · e escribir artista · x quitar · ↑↓ mover · Tab cambiar · a aplicar · q salir".into(),
-        (_, Tab::Alias) => "1 todo a la izquierda · 2 todo a la derecha · e escribir nombre · d son distintos · x quitar · Tab · a aplicar · q salir".into(),
+        (Mode::Input(text), _) => format!("Artist name: {text}▏   (Enter accepts, Esc cancels)"),
+        (_, Tab::Review) => "c use folder · t use tag · e type artist · x clear · ↑↓ move · Tab switch · a apply · q quit".into(),
+        (_, Tab::Alias) => "1 all into left · 2 all into right · e type name · d distinct · x clear · Tab · a apply · q quit".into(),
     };
     f.render_widget(Paragraph::new(help).wrap(Wrap { trim: true }).fg(Color::DarkGray), help_area);
-    let msg = if app.message.is_empty() { format!("{} decisiones pendientes", app.pending()) } else { app.message.clone() };
+    let msg = if app.message.is_empty() { format!("{} pending decisions", app.pending()) } else { app.message.clone() };
     f.render_widget(Paragraph::new(msg).fg(Color::Yellow), msg_area);
 }
 
@@ -333,22 +333,22 @@ fn field<'a>(label: &'a str, value: String) -> Line<'a> {
 }
 
 fn render_review_detail(f: &mut Frame, app: &App, area: Rect) {
-    let block = Block::bordered().title(" Detalle ");
+    let block = Block::bordered().title(" Details ");
     let Some(i) = app.review_state.selected() else {
-        f.render_widget(Paragraph::new("Nada que revisar.").block(block), area);
+        f.render_widget(Paragraph::new("Nothing to review.").block(block), area);
         return;
     };
     let m = &app.mismatches[i];
     let t = app.lib.tracks.iter().find(|t| t.rel == m.rel);
     let mut lines = vec![
-        field("Archivo", m.rel.display().to_string()),
-        field("Carpeta", m.folder.clone()),
-        field("Artista (tag)", m.tag_artist.clone()),
+        field("File", m.rel.display().to_string()),
+        field("Folder", m.folder.clone()),
+        field("Artist (tag)", m.tag_artist.clone()),
     ];
     if let Some(t) = t {
-        lines.push(field("Artistas", t.artist_display()));
-        lines.push(field("Título", t.title.clone()));
-        lines.push(field("Álbum", t.album.clone()));
+        lines.push(field("Artists", t.artist_display()));
+        lines.push(field("Title", t.title.clone()));
+        lines.push(field("Album", t.album.clone()));
     }
     lines.push(Line::raw(""));
     let options = [("c", Decision::UseFolder), ("t", Decision::UseTag)];
@@ -357,15 +357,15 @@ fn render_review_detail(f: &mut Frame, app: &App, area: Rect) {
     }
     if let Some(d) = &app.decisions[i] {
         lines.push(Line::raw(""));
-        lines.push(Line::from(vec![Span::raw("Elegido: ").green().bold(), Span::raw(mismatch_preview(app, m, d))]));
+        lines.push(Line::from(vec![Span::raw("Chosen: ").green().bold(), Span::raw(mismatch_preview(app, m, d))]));
     }
     f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }).block(block), area);
 }
 
 fn render_alias_detail(f: &mut Frame, app: &App, area: Rect) {
-    let block = Block::bordered().title(" Detalle ");
+    let block = Block::bordered().title(" Details ");
     let Some(i) = app.alias_state.selected() else {
-        f.render_widget(Paragraph::new("No hay alias por revisar.").block(block), area);
+        f.render_widget(Paragraph::new("No aliases to review.").block(block), area);
         return;
     };
     let a = &app.aliases[i];
@@ -374,18 +374,18 @@ fn render_alias_detail(f: &mut Frame, app: &App, area: Rect) {
         let tracks = resolve::tracks_in(&app.lib, folder);
         lines.push(Line::from(vec![
             Span::raw(format!("[{key}] ")).bold(),
-            Span::raw(format!("{folder} ({} canciones)", tracks.len())).bold(),
+            Span::raw(format!("{folder} ({} songs)", tracks.len())).bold(),
         ]));
         for t in tracks.iter().take(6) {
             lines.push(Line::raw(format!("     {}", t.title)));
         }
         if tracks.len() > 6 {
-            lines.push(Line::raw(format!("     … y {} más", tracks.len() - 6)).fg(Color::DarkGray));
+            lines.push(Line::raw(format!("     … and {} more", tracks.len() - 6)).fg(Color::DarkGray));
         }
         lines.push(Line::raw(""));
     }
     if let Some(m) = &app.merges[i] {
-        lines.push(Line::from(vec![Span::raw("Elegido: ").green().bold(), Span::raw(merge_preview(app, a, m))]));
+        lines.push(Line::from(vec![Span::raw("Chosen: ").green().bold(), Span::raw(merge_preview(app, a, m))]));
     }
     f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }).block(block), area);
 }

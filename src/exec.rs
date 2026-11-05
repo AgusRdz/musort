@@ -30,7 +30,7 @@ pub struct Outcome {
 }
 
 pub fn execute(library: &Path, changes: &Changes) -> Result<Outcome, String> {
-    let run = Mutex::new(Run::start(library).map_err(|e| format!("No se pudo crear el registro: {e}"))?);
+    let run = Mutex::new(Run::start(library).map_err(|e| format!("Couldn't create the log: {e}"))?);
     // Tag writes may rewrite whole files over the network, so they go in parallel; the
     // journal entry is recorded under the lock before each write.
     let mut failed: Vec<String> = changes
@@ -60,6 +60,6 @@ pub fn execute(library: &Path, changes: &Changes) -> Result<Outcome, String> {
         }
     }
     let applied = changes.len() - failed.len() - skipped;
-    let run_dir = run.finish().map_err(|e| format!("No se pudo cerrar el registro: {e}"))?;
+    let run_dir = run.finish().map_err(|e| format!("Couldn't close the log: {e}"))?;
     Ok(Outcome { applied, failed, run_dir })
 }

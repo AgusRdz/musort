@@ -44,8 +44,6 @@ musort undo   /path/to/Music            # reverts the last operation
 
 `clean`, `fix` and `sync` show what they would do; add `--apply` to do it. `doctor`, `fix` and `sync` accept `--all` to list everything instead of the first few items.
 
-The CLI's own messages are in Spanish.
-
 ### doctor
 
 Lists what's wrong: songs without `album_artist`, several artists packed into one value (`"A, B"`), folders that don't match the tag's artist, possible aliases of the same artist, duplicates, URLs in tags, songs missing genre, year, artwork or lyrics, and system junk.

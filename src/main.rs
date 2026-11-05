@@ -20,7 +20,7 @@ use crate::tags::Edit;
 use crate::trash::Run;
 
 #[derive(Parser)]
-#[command(name = "musort", version, about = "Organiza una biblioteca de música para Jellyfin y reproductores portátiles")]
+#[command(name = "musort", version, about = "Organizes a music library for Jellyfin and portable players")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -28,57 +28,57 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Revisa la biblioteca y reporta problemas (solo lectura)
+    /// Checks the library and reports problems (read-only)
     Doctor {
-        /// Carpeta raíz de la biblioteca
+        /// Library root folder
         library: PathBuf,
-        /// Muestra todos los elementos de cada problema, no solo los primeros
+        /// Show every item of each problem, not just the first few
         #[arg(short, long)]
         all: bool,
     },
-    /// Quita carpetas vacías, basura del sistema y letras sin canción (a la papelera de musort)
+    /// Removes empty folders, system junk and orphan lyrics (into musort's trash)
     Clean {
-        /// Carpeta raíz de la biblioteca
+        /// Library root folder
         library: PathBuf,
-        /// Aplica los cambios; sin esto solo muestra lo que haría
+        /// Apply the changes; without it, only show what would happen
         #[arg(long)]
         apply: bool,
     },
-    /// Corrige tags (artistas, album_artist, basura) y renombra archivos y carpetas según el tag
+    /// Fixes tags (artists, album_artist, junk) and renames files and folders after the tags
     Fix {
-        /// Carpeta raíz de la biblioteca
+        /// Library root folder
         library: PathBuf,
-        /// Aplica los cambios; sin esto solo muestra lo que haría
+        /// Apply the changes; without it, only show what would happen
         #[arg(long)]
         apply: bool,
-        /// También convierte a NFC los nombres guardados en NFD (Jellyfin los verá como canciones nuevas)
+        /// Also convert names stored as NFD to NFC (Jellyfin will see them as new songs)
         #[arg(long)]
         unicode: bool,
-        /// Muestra todos los cambios, no solo los primeros
+        /// Show every change, not just the first few
         #[arg(short, long)]
         all: bool,
     },
-    /// Copia la música a la tarjeta del reproductor: solo lo nuevo o cambiado, y borra lo que ya no está
+    /// Copies music to the player's card: only what's new or changed, and deletes what's gone
     Sync {
-        /// Carpeta raíz de la biblioteca
+        /// Library root folder
         library: PathBuf,
-        /// Raíz de la tarjeta del reproductor (p. ej. /Volumes/JM21)
+        /// Root of the player's card (e.g. /Volumes/JM21)
         dest: PathBuf,
-        /// Aplica los cambios; sin esto solo muestra lo que haría
+        /// Apply the changes; without it, only show what would happen
         #[arg(long)]
         apply: bool,
-        /// Muestra todos los cambios, no solo los primeros
+        /// Show every change, not just the first few
         #[arg(short, long)]
         all: bool,
     },
-    /// Pantalla para decidir lo que `fix` no puede: artistas equivocados y posibles alias
+    /// Screen to decide what `fix` can't: wrong artists and possible aliases
     Review {
-        /// Carpeta raíz de la biblioteca
+        /// Library root folder
         library: PathBuf,
     },
-    /// Revierte la última operación (clean, fix o review)
+    /// Reverts the last operation (clean, fix or review)
     Undo {
-        /// Carpeta raíz de la biblioteca
+        /// Library root folder
         library: PathBuf,
     },
 }
@@ -96,7 +96,7 @@ fn main() -> ExitCode {
         | Command::Undo { library } => library.clone(),
     };
     if !library.is_dir() {
-        eprintln!("No existe la carpeta: {}", library.display());
+        eprintln!("Folder not found: {}", library.display());
         return ExitCode::FAILURE;
     }
     match cli.command {
@@ -128,17 +128,17 @@ fn section(title: &str, why: &str, items: &[String], all: bool) {
         println!("    {item}");
     }
     if items.len() > shown {
-        println!("    … y {} más (usa --all)", items.len() - shown);
+        println!("    … and {} more (use --all)", items.len() - shown);
     }
     println!();
 }
 
 fn doctor_cmd(library: &Path, all: bool) -> ExitCode {
     let lib = scan::scan(library);
-    println!("{} canciones en {}\n", lib.tracks.len(), library.display());
+    println!("{} songs in {}\n", lib.tracks.len(), library.display());
     let checks = doctor::run(&lib, &config::Config::load(library));
     if checks.is_empty() {
-        println!("Sin problemas.");
+        println!("No problems found.");
     }
     for c in &checks {
         section(c.title, c.why, &c.items, all);
@@ -150,7 +150,7 @@ fn doctor_cmd(library: &Path, all: bool) -> ExitCode {
 fn scan_for_writing(library: &Path) -> Option<scan::Library> {
     let lib = scan::scan(library);
     if !lib.errors.is_empty() {
-        eprintln!("Hay {} archivos que no se pudieron leer; corre `doctor` y revisa antes.", lib.errors.len());
+        eprintln!("{} files couldn't be read; run `doctor` and check them first.", lib.errors.len());
         return None;
     }
     Some(lib)
@@ -162,11 +162,11 @@ fn finish(run: Run, failed: &[String], library: &Path) -> ExitCode {
     }
     match run.finish() {
         Ok(Some(dir)) => {
-            println!("Registro en {}", dir.display());
-            println!("Para revertir: musort undo {}", library.display());
+            println!("Log in {}", dir.display());
+            println!("To revert: musort undo {}", library.display());
         }
         Ok(None) => {}
-        Err(e) => eprintln!("No se pudo cerrar el registro: {e}"),
+        Err(e) => eprintln!("Couldn't close the log: {e}"),
     }
     if failed.is_empty() { ExitCode::SUCCESS } else { ExitCode::FAILURE }
 }
@@ -175,7 +175,7 @@ fn clean_cmd(library: &Path, apply: bool) -> ExitCode {
     let Some(lib) = scan_for_writing(library) else { return ExitCode::FAILURE };
     let targets = clean::plan(&lib);
     if targets.is_empty() {
-        println!("Nada que limpiar.");
+        println!("Nothing to clean.");
         return ExitCode::SUCCESS;
     }
     for t in &targets {
@@ -183,14 +183,14 @@ fn clean_cmd(library: &Path, apply: bool) -> ExitCode {
         println!("  {}{slash}  ({})", t.rel.display(), t.reason);
     }
     if !apply {
-        println!("\n{} elementos. Nada se movió; usa --apply para aplicar.", targets.len());
+        println!("\n{} items. Nothing was moved; use --apply to apply.", targets.len());
         return ExitCode::SUCCESS;
     }
 
     let mut run = match Run::start(library) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("No se pudo crear la papelera: {e}");
+            eprintln!("Couldn't create the trash: {e}");
             return ExitCode::FAILURE;
         }
     };
@@ -200,7 +200,7 @@ fn clean_cmd(library: &Path, apply: bool) -> ExitCode {
             failed.push(format!("{}: {e}", t.rel.display()));
         }
     }
-    println!("\n{} elementos movidos a la papelera.", targets.len() - failed.len());
+    println!("\n{} items moved to the trash.", targets.len() - failed.len());
     finish(run, &failed, library)
 }
 
@@ -208,19 +208,19 @@ fn describe(e: &Edit) -> Vec<String> {
     let mut out = Vec::new();
     let q = |s: &str| format!("\"{s}\"");
     if let Some(v) = &e.artists {
-        out.push(format!("artistas {}", v.iter().map(|a| q(a)).collect::<Vec<_>>().join(" + ")));
+        out.push(format!("artists {}", v.iter().map(|a| q(a)).collect::<Vec<_>>().join(" + ")));
     }
     if let Some(v) = &e.album_artist {
         out.push(format!("album_artist {}", q(v)));
     }
     if let Some(v) = &e.title {
-        out.push(format!("título {}", q(v)));
+        out.push(format!("title {}", q(v)));
     }
     if let Some(v) = &e.album {
-        out.push(format!("álbum {}", q(v)));
+        out.push(format!("album {}", q(v)));
     }
     if let Some(v) = &e.comment {
-        out.push(if v.is_empty() { "quita comentario".into() } else { format!("comentario {}", q(v)) });
+        out.push(if v.is_empty() { "remove comment".into() } else { format!("comment {}", q(v)) });
     }
     out
 }
@@ -241,21 +241,21 @@ fn fix_cmd(library: &Path, apply: bool, unicode: bool, all: bool) -> ExitCode {
     };
     let album_artist_only =
         |e: &Edit| e.album_artist.is_some() && e.artists.is_none() && e.title.is_none() && e.album.is_none() && e.comment.is_none();
-    section("Solo album_artist", "Se llena con el artista principal.", &only(&album_artist_only), all);
-    section("Otros cambios de tags", "", &only(&|e| !album_artist_only(e)), all);
-    section("Archivos renombrados", "Para que coincidan con el título.", &renames(&plan.files), all);
-    section("Carpetas renombradas", "Para que coincidan con el artista.", &renames(&plan.folders), all);
-    section("Nombres a NFC", "", &renames(&plan.unicode), all);
-    section("Revisar a mano (no se toca)", "", &plan.review, all);
+    section("album_artist only", "Filled with the main artist.", &only(&album_artist_only), all);
+    section("Other tag changes", "", &only(&|e| !album_artist_only(e)), all);
+    section("Renamed files", "To match the title.", &renames(&plan.files), all);
+    section("Renamed folders", "To match the artist.", &renames(&plan.folders), all);
+    section("Names to NFC", "", &renames(&plan.unicode), all);
+    section("Review by hand (left untouched)", "", &plan.review, all);
 
     let total = plan.tags.len() + plan.files.len() + plan.folders.len() + plan.unicode.len();
     if total == 0 {
-        println!("Nada que corregir.");
+        println!("Nothing to fix.");
         return ExitCode::SUCCESS;
     }
     if !apply {
         println!(
-            "{} tags, {} renombres. Nada se cambió; usa --apply para aplicar.",
+            "{} tags, {} renames. Nothing was changed; use --apply to apply.",
             plan.tags.len(),
             plan.files.len() + plan.folders.len() + plan.unicode.len()
         );
@@ -273,13 +273,13 @@ fn fix_cmd(library: &Path, apply: bool, unicode: bool, all: bool) -> ExitCode {
 fn report(library: &Path, outcome: Result<exec::Outcome, String>) -> ExitCode {
     match outcome {
         Ok(o) => {
-            println!("{} cambios aplicados.", o.applied);
+            println!("{} changes applied.", o.applied);
             for f in &o.failed {
                 eprintln!("  error: {f}");
             }
             if let Some(dir) = o.run_dir {
-                println!("Registro en {}", dir.display());
-                println!("Para revertir: musort undo {}", library.display());
+                println!("Log in {}", dir.display());
+                println!("To revert: musort undo {}", library.display());
             }
             if o.failed.is_empty() { ExitCode::SUCCESS } else { ExitCode::FAILURE }
         }
@@ -292,37 +292,37 @@ fn report(library: &Path, outcome: Result<exec::Outcome, String>) -> ExitCode {
 
 fn sync_cmd(library: &Path, dest: &Path, apply: bool, all: bool) -> ExitCode {
     let (Ok(lib), Ok(card)) = (library.canonicalize(), dest.canonicalize()) else {
-        eprintln!("No existe el destino: {}", dest.display());
+        eprintln!("Destination not found: {}", dest.display());
         return ExitCode::FAILURE;
     };
     if card.starts_with(&lib) || lib.starts_with(&card) {
-        eprintln!("La biblioteca y el destino no pueden estar uno dentro del otro.");
+        eprintln!("The library and the destination can't be inside one another.");
         return ExitCode::FAILURE;
     }
     let plan = match sync::plan(library, dest) {
         Ok(p) => p,
         Err(e) => {
-            eprintln!("No se pudo leer: {e}");
+            eprintln!("Couldn't read: {e}");
             return ExitCode::FAILURE;
         }
     };
     let show = |ps: &[PathBuf]| ps.iter().map(|p| p.display().to_string()).collect::<Vec<_>>();
     let imports: Vec<String> = plan.imports.iter().map(|(c, _)| c.display().to_string()).collect();
-    section("Letras que se traen al NAS", "Solo están en la tarjeta y la canción no tiene letra en la biblioteca.", &imports, all);
-    section("A borrar en la tarjeta", "Ya no están en la biblioteca.", &show(&plan.deletes), all);
-    section("Se conservan", "No están en la biblioteca, pero no son música.", &show(&plan.kept), all);
+    section("Lyrics brought into the library", "Only on the card, and the song has no lyrics in the library.", &imports, all);
+    section("To delete from the card", "No longer in the library.", &show(&plan.deletes), all);
+    section("Kept", "Not in the library, but not music either.", &show(&plan.kept), all);
     let copies: Vec<String> = plan.copies.iter().map(|c| c.dest.clone()).collect();
-    section("A copiar", "Nuevos o cambiados.", &copies, all);
+    section("To copy", "New or changed.", &copies, all);
     let gb = plan.bytes as f64 / 1e9;
     println!(
-        "{} sin cambios, {} a copiar ({gb:.1} GB), {} a borrar, {} letras al NAS.",
+        "{} unchanged, {} to copy ({gb:.1} GB), {} to delete, {} lyrics into the library.",
         plan.unchanged,
         plan.copies.len(),
         plan.deletes.len(),
         plan.imports.len()
     );
     if !apply {
-        println!("Nada se cambió; usa --apply para aplicar.");
+        println!("Nothing was changed; use --apply to apply.");
         return ExitCode::SUCCESS;
     }
     if plan.copies.is_empty() && plan.deletes.is_empty() && plan.imports.is_empty() {
@@ -337,7 +337,7 @@ fn sync_cmd(library: &Path, dest: &Path, apply: bool, all: bool) -> ExitCode {
         eprintln!("  error: {f}");
     }
     if failed.is_empty() {
-        println!("Tarjeta sincronizada.");
+        println!("Card synced.");
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
@@ -347,22 +347,22 @@ fn sync_cmd(library: &Path, dest: &Path, apply: bool, all: bool) -> ExitCode {
 fn undo_cmd(library: &Path) -> ExitCode {
     match trash::undo(library) {
         Ok(None) => {
-            println!("No hay nada que revertir.");
+            println!("Nothing to revert.");
             ExitCode::SUCCESS
         }
         Ok(Some(r)) => {
-            println!("{} operaciones revertidas.", r.restored);
+            println!("{} operations reverted.", r.restored);
             if r.failed.is_empty() {
                 return ExitCode::SUCCESS;
             }
-            eprintln!("No se pudieron revertir (siguen en {}):", r.run_dir.display());
+            eprintln!("Couldn't revert (still in {}):", r.run_dir.display());
             for f in &r.failed {
                 eprintln!("  {f}");
             }
             ExitCode::FAILURE
         }
         Err(e) => {
-            eprintln!("Error al revertir: {e}");
+            eprintln!("Error while reverting: {e}");
             ExitCode::FAILURE
         }
     }

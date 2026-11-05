@@ -71,7 +71,7 @@ impl Run {
     pub fn rename(&mut self, from: &Path, to: &Path) -> io::Result<()> {
         let dest = self.root.join(to);
         if dest.exists() && !same_file(&self.root.join(from), &dest) {
-            return Err(io::Error::new(io::ErrorKind::AlreadyExists, format!("ya existe {}", to.display())));
+            return Err(io::Error::new(io::ErrorKind::AlreadyExists, format!("{} already exists", to.display())));
         }
         if let Some(parent) = dest.parent() {
             fs::create_dir_all(parent)?;
@@ -147,7 +147,7 @@ pub fn undo(root: &Path) -> io::Result<Option<Restored>> {
             Op::Trash { rel } => {
                 let dest = root.join(rel);
                 if dest.exists() {
-                    Err(format!("{}: ya existe", rel.display()))
+                    Err(format!("{}: already exists", rel.display()))
                 } else {
                     dest.parent()
                         .map_or(Ok(()), fs::create_dir_all)
@@ -157,7 +157,7 @@ pub fn undo(root: &Path) -> io::Result<Option<Restored>> {
             }
             Op::Rename { from, to } => {
                 if root.join(from).exists() && !same_file(&root.join(from), &root.join(to)) {
-                    Err(format!("{}: ya existe", from.display()))
+                    Err(format!("{}: already exists", from.display()))
                 } else {
                     fs::rename(root.join(to), root.join(from)).map_err(|e| format!("{}: {e}", to.display()))
                 }

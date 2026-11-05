@@ -221,12 +221,12 @@ pub fn apply(library: &Path, dest: &Path, mut plan: Plan, progress: impl Fn(usiz
     for (card, lib) in &plan.imports {
         // Never replaces lyrics the library already has.
         if let Err(e) = copy_file(&dest.join(card), &library.join(lib), false) {
-            failed.push(format!("traer letra {}: {e}", card.display()));
+            failed.push(format!("import lyrics {}: {e}", card.display()));
         }
     }
     for rel in &plan.deletes {
         if let Err(e) = remove(&dest.join(rel)) {
-            failed.push(format!("borrar {}: {e}", rel.display()));
+            failed.push(format!("delete {}: {e}", rel.display()));
         }
     }
     let total = plan.copies.len();
@@ -239,7 +239,7 @@ pub fn apply(library: &Path, dest: &Path, mut plan: Plan, progress: impl Fn(usiz
             Err(e) => {
                 // A partial file must not look synced next time.
                 let _ = fs::remove_file(dest.join(&c.dest));
-                failed.push(format!("copiar {}: {e}", c.dest));
+                failed.push(format!("copy {}: {e}", c.dest));
             }
         }
         if (i + 1) % 50 == 0 {
@@ -247,10 +247,10 @@ pub fn apply(library: &Path, dest: &Path, mut plan: Plan, progress: impl Fn(usiz
         }
     }
     if let Err(e) = save_manifest(dest, &plan.entries) {
-        failed.push(format!("guardar {MANIFEST}: {e}"));
+        failed.push(format!("save {MANIFEST}: {e}"));
     }
     if let Err(e) = remove_apple_double(dest) {
-        failed.push(format!("limpiar archivos ._: {e}"));
+        failed.push(format!("clean up ._ files: {e}"));
     }
     failed
 }

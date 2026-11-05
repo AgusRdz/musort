@@ -54,7 +54,7 @@ pub fn write(path: &Path, edit: &Edit) -> Result<(), String> {
             apply_vorbis(tag, edit);
             tag.save_to_path(path, WriteOptions::default()).map_err(|e| e.to_string())
         }
-        _ => Err(format!("formato no soportado para escribir: .{ext}")),
+        _ => Err(format!("writing .{ext} files is not supported")),
     }
 }
 

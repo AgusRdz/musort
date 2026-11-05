@@ -39,18 +39,18 @@ pub fn run(lib: &Library, cfg: &Config) -> Vec<Check> {
 
     let mut checks = vec![
         check(
-            "Archivos ilegibles",
-            "No se pudieron leer los tags.",
+            "Unreadable files",
+            "Their tags couldn't be read.",
             lib.errors.iter().map(|(p, e)| format!("{} — {e}", show(p))).collect(),
         ),
         check(
-            "Sin album_artist",
-            "Jellyfin agrupa artistas y álbumes por este campo; sin él usa `artist` completo.",
+            "Missing album_artist",
+            "Jellyfin groups artists and albums by this field; without it, it uses the whole `artist`.",
             list(&|t| t.album_artist.is_empty()),
         ),
         check(
-            "Varios artistas en un solo valor",
-            "Jellyfin no separa por coma: \"A, B\" se vuelve un artista nuevo.",
+            "Several artists in one value",
+            "Jellyfin doesn't split on commas: \"A, B\" becomes a new artist.",
             tracks
                 .iter()
                 .filter(|t| t.artists.iter().any(|a| a.contains(',') || a.contains(';')))
@@ -58,13 +58,13 @@ pub fn run(lib: &Library, cfg: &Config) -> Vec<Check> {
                 .collect(),
         ),
         check(
-            "Nombres guardados en NFD",
-            "Cosmético: Jellyfin y el FiiO muestran el tag. `fix --unicode` los convierte, pero Jellyfin los verá como canciones nuevas.",
+            "Names stored as NFD",
+            "Cosmetic: Jellyfin and the FiiO show the tag. `fix --unicode` converts them, but Jellyfin will see them as new songs.",
             nfd_paths(lib).iter().map(|p| show(p)).collect(),
         ),
         check(
-            "Carpeta distinta al artista del tag",
-            "La carpeta debería salir del tag (album_artist o artista principal).",
+            "Folder differs from the tag's artist",
+            "The folder should come from the tag (album_artist or main artist).",
             {
                 let mut m: BTreeMap<(String, String), usize> = BTreeMap::new();
                 for t in tracks {
@@ -78,13 +78,13 @@ pub fn run(lib: &Library, cfg: &Config) -> Vec<Check> {
             },
         ),
         check(
-            "Posibles alias de artista",
-            "Carpetas que parecen el mismo artista con otro nombre.",
+            "Possible artist aliases",
+            "Folders that look like the same artist under another name.",
             alias_pairs(lib, cfg).into_iter().map(|(a, b)| format!("{a} ~ {b}")).collect(),
         ),
         check(
-            "Nombre de archivo distinto al título",
-            "El nombre debería salir del tag `title`.",
+            "File name differs from the title",
+            "The name should come from the `title` tag.",
             tracks
                 .iter()
                 .filter(|t| {
@@ -97,8 +97,8 @@ pub fn run(lib: &Library, cfg: &Config) -> Vec<Check> {
                 .collect(),
         ),
         check(
-            "Basura en tags",
-            "URLs o publicidad metidas en artista/álbum/título/comentario.",
+            "Junk in tags",
+            "URLs or ads stuffed into artist/album/title/comment.",
             tracks
                 .iter()
                 .filter(|t| {
@@ -110,28 +110,28 @@ pub fn run(lib: &Library, cfg: &Config) -> Vec<Check> {
     ];
 
     let (dupes, same_title, versions) = duplicates(tracks);
-    checks.push(check("Duplicados", "Mismo artista, título y álbum.", dupes));
-    checks.push(check("Misma canción en otro álbum", "Puede ser intencional (en vivo, compilación).", same_title));
-    checks.push(check("Versiones de una misma canción", "Remix, acústico, demo… normalmente intencional.", versions));
+    checks.push(check("Duplicates", "Same artist, title and album.", dupes));
+    checks.push(check("Same song on another album", "May be intentional (live, compilation).", same_title));
+    checks.push(check("Versions of the same song", "Remix, acoustic, demo… usually intentional.", versions));
 
     checks.extend([
-        check("Sin género", "No se puede navegar por género en Jellyfin ni en el FiiO.", list(&|t| t.genre.is_empty())),
-        check("Sin año", "", list(&|t| t.year.is_none())),
-        check("Sin carátula embebida", "", list(&|t| !t.has_art)),
-        check("Sin letra (.lrc)", "", list(&|t| !t.has_lrc)),
-        check("Letras huérfanas", ".lrc sin canción al lado.", lib.orphan_lrc.iter().map(|p| show(p)).collect()),
+        check("Missing genre", "Can't browse by genre in Jellyfin or on the FiiO.", list(&|t| t.genre.is_empty())),
+        check("Missing year", "", list(&|t| t.year.is_none())),
+        check("Missing embedded artwork", "", list(&|t| !t.has_art)),
+        check("Missing lyrics (.lrc)", "", list(&|t| !t.has_lrc)),
+        check("Orphan lyrics", ".lrc with no song next to it.", lib.orphan_lrc.iter().map(|p| show(p)).collect()),
         check(
-            "Carpetas sin música",
-            "Vacías o creadas por otros dispositivos.",
+            "Folders without music",
+            "Empty or created by other devices.",
             lib.dead_dirs.iter().map(|p| format!("{}/", show(p))).collect(),
         ),
         check(
-            "Carpetas del sistema",
-            "Creadas por macOS o Android.",
+            "System folders",
+            "Created by macOS or Android.",
             lib.junk_dirs.iter().map(|p| format!("{}/", show(p))).collect(),
         ),
-        check("Archivos basura", "", lib.junk_files.iter().map(|p| show(p)).collect()),
-        check("Otros archivos", "", lib.other_files.iter().map(|p| show(p)).collect()),
+        check("Junk files", "", lib.junk_files.iter().map(|p| show(p)).collect()),
+        check("Other files", "", lib.other_files.iter().map(|p| show(p)).collect()),
     ]);
 
     checks.retain(|c| !c.items.is_empty());

@@ -83,7 +83,7 @@ pub fn plan(lib: &Library, unicode: bool) -> Plan {
 
         // Tags that disagree with the folder need a human: the tag may be the wrong one.
         if fold(&album_artist) != fold(&folder) {
-            plan.review.push(format!("{} — carpeta \"{folder}\", artista del tag \"{album_artist}\"", t.rel.display()));
+            plan.review.push(format!("{} — folder \"{folder}\", tag artist \"{album_artist}\"", t.rel.display()));
             continue;
         }
         let target = Target {
@@ -205,7 +205,7 @@ fn drop_collisions(lib: &Library, plan: &mut Plan) {
     plan.files.retain(|r| {
         let keep = !bad.contains(&r.from.with_extension(""));
         if !keep && r.from.extension().is_some_and(|e| e != "lrc") {
-            plan.review.push(format!("{} — renombrar a \"{}\" choca con otro archivo", r.from.display(), name_of(&r.to)));
+            plan.review.push(format!("{} — renaming to \"{}\" collides with another file", r.from.display(), name_of(&r.to)));
         }
         keep
     });
@@ -216,7 +216,7 @@ fn drop_collisions(lib: &Library, plan: &mut Plan) {
     plan.folders.retain(|r| {
         let ok = folders.iter().filter(|f| fold(f) == fold(&name_of(&r.to))).count() == 1;
         if !ok {
-            plan.review.push(format!("{}/ — renombrar a \"{}\" choca con otra carpeta", r.from.display(), r.to.display()));
+            plan.review.push(format!("{}/ — renaming to \"{}\" collides with another folder", r.from.display(), r.to.display()));
         }
         ok
     });

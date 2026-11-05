@@ -1,91 +1,93 @@
 # musort
 
-Organiza una biblioteca de música plana (`Artista/Canción.mp3` + `.lrc`) para que se vea bien en Jellyfin y en un reproductor portátil (probado con un FiiO JM21), y mantiene la tarjeta del reproductor sincronizada con la biblioteca.
+Organizes a flat music library (`Artist/Song.mp3` + `.lrc`) so it looks right in Jellyfin and on a portable player (tested with a FiiO JM21), and keeps the player's card in sync with the library.
 
-Es un solo binario. Nada se escribe sin `--apply`, y lo que se quita o cambia se puede revertir con `musort undo`.
+It's a single binary. Nothing is written without `--apply`, and whatever is removed or changed can be reverted with `musort undo`.
 
-## Compilar
+## Build
 
-Necesitas Rust (stable):
+You need Rust (stable):
 
 ```sh
-brew install rustup && rustup-init -y   # si no lo tienes
+brew install rustup && rustup-init -y   # if you don't have it
 cargo build --release
 ```
 
-El binario queda en `target/release/musort`.
+The binary ends up in `target/release/musort`.
 
-## Instalar en el PATH
+## Install on your PATH
 
 ```sh
 mkdir -p ~/.local/bin
 install -m 755 target/release/musort ~/.local/bin/musort
 ```
 
-Si `~/.local/bin` no está en tu PATH, agrégalo a tu shell (`~/.zshrc` o `~/.bashrc`) y recarga:
+If `~/.local/bin` isn't on your PATH, add it to your shell config (`~/.zshrc` or `~/.bashrc`) and reload:
 
 ```sh
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-Para actualizar, vuelve a compilar y repite el `install`.
+To update, rebuild and run the `install` again.
 
-## Uso
+## Usage
 
 ```sh
-musort doctor /ruta/a/Music            # reporte de problemas (solo lectura)
-musort clean  /ruta/a/Music            # carpetas vacías, basura de macOS/Android, letras sin canción
-musort fix    /ruta/a/Music            # tags y nombres de archivo/carpeta
-musort review /ruta/a/Music            # pantalla para lo que fix no decide solo
-musort sync   /ruta/a/Music /Volumes/TARJETA
-musort undo   /ruta/a/Music            # revierte la última operación
+musort doctor /path/to/Music            # problem report (read-only)
+musort clean  /path/to/Music            # empty folders, macOS/Android junk, orphan lyrics
+musort fix    /path/to/Music            # tags and file/folder names
+musort review /path/to/Music            # screen for what fix can't decide on its own
+musort sync   /path/to/Music /Volumes/CARD
+musort undo   /path/to/Music            # reverts the last operation
 ```
 
-`clean`, `fix` y `sync` muestran lo que harían; agrega `--apply` para hacerlo. `doctor`, `fix` y `sync` aceptan `--all` para listar todo en vez de los primeros elementos.
+`clean`, `fix` and `sync` show what they would do; add `--apply` to do it. `doctor`, `fix` and `sync` accept `--all` to list everything instead of the first few items.
+
+The CLI's own messages are in Spanish.
 
 ### doctor
 
-Lista lo que está mal: canciones sin `album_artist`, varios artistas metidos en un solo valor (`"A, B"`), carpetas que no coinciden con el artista del tag, posibles alias de un mismo artista, duplicados, URLs en los tags, canciones sin género, año, carátula o letra, y basura del sistema.
+Lists what's wrong: songs without `album_artist`, several artists packed into one value (`"A, B"`), folders that don't match the tag's artist, possible aliases of the same artist, duplicates, URLs in tags, songs missing genre, year, artwork or lyrics, and system junk.
 
 ### clean
 
-Mueve a la papelera carpetas sin música, carpetas y archivos que crean macOS y Android (`.DS_Store`, `._*`, `.Spotlight-V100`, `Android/`…) y letras `.lrc` cuya canción ya no existe. Una carpeta con archivos que no son música no se toca.
+Moves to the trash: folders with no music, folders and files created by macOS and Android (`.DS_Store`, `._*`, `.Spotlight-V100`, `Android/`…) and `.lrc` lyrics whose song no longer exists. A folder holding files that aren't music is left alone.
 
 ### fix
 
-- Separa colaboraciones en varios artistas (ID3v2.4, un valor por artista) y llena `album_artist` con el artista principal. Así Jellyfin liga la canción a cada artista y el FiiO la agrupa bajo el principal sin crear artistas falsos como `"A, B"`.
-- Unifica la forma de escribir al artista dentro de cada carpeta.
-- Quita publicidad de los tags (`- www.sitio.com`, `Título | Banda 2016`, `(feat. X)` repetido).
-- Renombra archivos según el título y carpetas según el artista, con nombres válidos en FAT/exFAT.
-- Las canciones cuyo tag dice un artista distinto al de su carpeta no se tocan; se resuelven con `review`.
-- `--unicode` también convierte a NFC los nombres guardados en NFD. Es cosmético y Jellyfin verá esas rutas como canciones nuevas (pierde historial y favoritos), por eso no se hace por defecto.
+- Splits collaborations into separate artists (ID3v2.4, one value per artist) and fills `album_artist` with the main artist. Jellyfin then links the song to every artist, and the FiiO groups it under the main one without creating fake artists like `"A, B"`.
+- Unifies how the artist is spelled within each folder.
+- Strips ads from tags (`- www.site.com`, `Title | Band 2016`, repeated `(feat. X)`).
+- Renames files after the title and folders after the artist, using names valid on FAT/exFAT.
+- Songs whose tag names a different artist than their folder are left untouched; resolve them with `review`.
+- `--unicode` also converts names stored as NFD to NFC. It's cosmetic, and Jellyfin will see those paths as new songs (losing play history and favorites), so it's off by default.
 
 ### review
 
-Pantalla en la terminal con dos pestañas (Tab para cambiar):
+A terminal screen with two tabs (Tab to switch):
 
-- **Artista equivocado**: `c` usa el artista de la carpeta, `t` usa el del tag y mueve la canción a esa carpeta, `e` para escribir el nombre.
-- **Posibles alias**: `1` une todo en la carpeta de la izquierda, `2` en la de la derecha, `e` para escribir el nombre final, `d` si son artistas distintos (se recuerda en `.musort.json` y no se vuelve a preguntar).
+- **Wrong artist**: `c` uses the folder's artist, `t` uses the tag's artist and moves the song to that folder, `e` to type the name.
+- **Possible aliases**: `1` merges everything into the left folder, `2` into the right one, `e` to type the final name, `d` if they're different artists (remembered in `.musort.json` and not asked again).
 
-`x` quita una decisión, `a` dos veces aplica, `q` sale. Después corre `musort fix` para limpiar títulos.
+`x` clears a decision, `a` twice applies, `q` quits. Afterwards run `musort fix` to clean up titles.
 
 ### sync
 
-Copia a la tarjeta solo la música y letras nuevas o cambiadas, y borra de la tarjeta lo que ya no está en la biblioteca. Guarda un índice `.musort-sync.json` en la tarjeta para no volver a compararla completa.
+Copies only new or changed music and lyrics to the card, and deletes from the card whatever is no longer in the library. Keeps an index, `.musort-sync.json`, on the card so it doesn't have to compare the whole card again.
 
-- Solo borra música, letras y archivos ocultos; cualquier otra cosa se conserva y se reporta. Nunca entra a `Android/`, `DCIM/`, `Music/` ni a las carpetas ocultas de la raíz.
-- Si la tarjeta tiene una letra que la biblioteca no (el reproductor puede descargarlas), la copia a la biblioteca en vez de borrarla.
-- Borra los `._*` que macOS crea al escribir en exFAT.
-- Usa un lector de tarjetas. Montar el reproductor por MTP (MacDroid y similares) es lento y falla al leer muchas carpetas.
+- Only deletes music, lyrics and hidden files; anything else is kept and reported. Never touches `Android/`, `DCIM/`, `Music/` or the hidden folders at the card's root.
+- If the card has lyrics the library lacks (the player can download them), they're copied into the library instead of deleted.
+- Removes the `._*` files macOS creates when writing to exFAT.
+- Use a card reader. Mounting the player over MTP (MacDroid and similar) is slow and fails when reading many folders.
 
 ### undo
 
-Cada `clean`, `fix --apply` o cambio desde `review` guarda un registro en `.musort-trash/<fecha>/` dentro de la biblioteca: lo que se quitó se mueve ahí en vez de borrarse, y los renombres y cambios de tags quedan anotados. `undo` revierte la operación más reciente; repítelo para ir más atrás. Cuando estés seguro, borra `.musort-trash` a mano. Jellyfin ignora las carpetas que empiezan con punto.
+Every `clean`, `fix --apply` or change made from `review` keeps a log in `.musort-trash/<timestamp>/` inside the library: whatever was removed is moved there instead of deleted, and renames and tag changes are recorded. `undo` reverts the most recent operation; run it again to go further back. Once you're sure, delete `.musort-trash` by hand. Jellyfin ignores folders that start with a dot.
 
-## Notas
+## Notes
 
-- El primer escaneo de una biblioteca en red lee los tags de todos los archivos y puede tardar un par de minutos; después se usa un índice en `~/Library/Caches/musort/` (o `~/.cache/musort/`) y solo se releen los archivos que cambiaron.
-- Escribir tags puede reescribir el archivo completo la primera vez (si el tag no tiene espacio libre). Por red eso es lento; las siguientes escrituras son rápidas.
-- Formatos: lee mp3, flac, m4a, ogg, opus y wav; escribe tags en mp3 y flac.
-- macOS y Linux.
+- The first scan of a network library reads every file's tags and can take a couple of minutes; after that an index in `~/Library/Caches/musort/` (or `~/.cache/musort/`) is used and only changed files are re-read.
+- Writing tags may rewrite the whole file the first time (when the tag has no free space). Over the network that's slow; later writes are fast.
+- Formats: reads mp3, flac, m4a, ogg, opus and wav; writes tags to mp3 and flac.
+- macOS and Linux.
